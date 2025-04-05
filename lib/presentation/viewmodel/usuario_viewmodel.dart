@@ -1,7 +1,8 @@
+import 'package:flutter/material.dart';
 import 'package:app_estoque_limpeza/data/repositories/usuario_repositories.dart';
 import 'package:app_estoque_limpeza/data/model/usuario_model.dart';
 
-class UsuarioViewModel {
+class UsuarioViewModel with ChangeNotifier {
   final UsuarioRepository repository;
 
   UsuarioViewModel(this.repository);
@@ -15,67 +16,92 @@ class UsuarioViewModel {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
+  Usuario? _usuarioLogado;
+  Usuario? get usuarioLogado => _usuarioLogado;
+
   Future<void> fetchUsuarios() async {
     _isLoading = true;
+    notifyListeners();
 
     try {
       _usuarios = await repository.getUsuarios();
       _errorMessage = null;
     } catch (error) {
       _errorMessage = 'Erro ao buscar usuários: $error';
+      _usuarios = [];
     } finally {
       _isLoading = false;
+      notifyListeners();
     }
   }
 
   Future<void> addUsuario(Usuario usuario) async {
     _isLoading = true;
+    notifyListeners();
 
     try {
       await repository.insertUsuario(usuario);
-      _usuarios.add(usuario);
+      await fetchUsuarios(); // Recarrega a lista atualizada
       _errorMessage = null;
     } catch (error) {
       _errorMessage = 'Erro ao adicionar usuário: $error';
     } finally {
       _isLoading = false;
+      notifyListeners();
     }
   }
 
   Future<void> updateUsuario(Usuario usuario) async {
     _isLoading = true;
+    notifyListeners();
 
     try {
       await repository.updateUsuario(usuario);
-      final index =
-          _usuarios.indexWhere((u) => u.idusuario == usuario.idusuario);
-      if (index != -1) {
-        _usuarios[index] = usuario;
-      }
+      await fetchUsuarios(); // Recarrega a lista atualizada
       _errorMessage = null;
     } catch (error) {
       _errorMessage = 'Erro ao atualizar usuário: $error';
     } finally {
       _isLoading = false;
+      notifyListeners();
     }
   }
 
   Future<void> deleteUsuario(int id) async {
     _isLoading = true;
+    notifyListeners();
 
     try {
       await repository.deleteUsuario(id);
-      _usuarios.removeWhere((u) => u.idusuario == id);
+      await fetchUsuarios(); // Recarrega a lista atualizada
       _errorMessage = null;
     } catch (error) {
       _errorMessage = 'Erro ao excluir usuário: $error';
     } finally {
       _isLoading = false;
+      notifyListeners();
     }
   }
 
-  // Retorna o objeto Usuario autenticado ou null caso inválido
   Future<Usuario?> loginUser(String username, String password) async {
-    return await repository.verifyLogin(username, password);
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      _usuarioLogado = await repository.verifyLogin(username, password);
+      _errorMessage = _usuarioLogado == null ? 'Credenciais inválidas' : null;
+      return _usuarioLogado;
+    } catch (error) {
+      _errorMessage = 'Erro ao fazer login: $error';
+      return null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  void logout() {
+    _usuarioLogado = null;
+    notifyListeners();
   }
 }

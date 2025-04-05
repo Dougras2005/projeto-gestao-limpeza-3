@@ -64,6 +64,21 @@ class HomePageAdminState extends State<HomePageAdmin> {
     });
   }
 
+  // Método para filtrar produtos com baixo estoque
+  // void _filtrarProdutosValidade() {
+  //   setState(() {
+  //     if (_filtroAtivo) {
+  //       _produtosFiltrados = _produtos; // Retorna à lista completa
+  //       _filtroAtivo = false;
+  //     } else {
+  //       _produtosFiltrados = _produtos.where((produto) => produto.validade <= 5).toList();
+  //       _filtroAtivo = true;
+  //     }
+  //   });
+  // }
+
+  
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

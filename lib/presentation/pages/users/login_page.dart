@@ -1,9 +1,9 @@
-import 'package:app_estoque_limpeza/data/model/usuario_model.dart';
-import 'package:app_estoque_limpeza/presentation/pages/homepage_funcionario.dart';
 import 'package:app_estoque_limpeza/presentation/viewmodel/usuario_viewmodel.dart';
 import 'package:flutter/material.dart';
-import '../../../data/repositories/usuario_repositories.dart';
-import '../homepage_admin.dart';
+import 'package:provider/provider.dart';
+import 'package:app_estoque_limpeza/presentation/pages/homepage_funcionario.dart';
+import 'package:app_estoque_limpeza/data/repositories/usuario_repositories.dart';
+import 'package:app_estoque_limpeza/presentation/pages/homepage_admin.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -13,18 +13,30 @@ class LoginPage extends StatefulWidget {
 }
 
 class LoginPageState extends State<LoginPage> {
-  final TextEditingController usuarioController = TextEditingController();
-  final TextEditingController senhaController = TextEditingController();
-  final UsuarioViewModel userViewModel = UsuarioViewModel(UsuarioRepository());
+  final TextEditingController _usuarioController = TextEditingController();
+  final TextEditingController _senhaController = TextEditingController();
+  bool _isLoading = false;
 
-  loginUser() async {
-    final usuario = usuarioController.text;
-    final senha = senhaController.text;
+  @override
+  void dispose() {
+    _usuarioController.dispose();
+    _senhaController.dispose();
+    super.dispose();
+  }
 
-    // Realiza o login e retorna o perfil do usuário
-    final Usuario? userProfile = await userViewModel.loginUser(usuario, senha);
+  Future<void> _loginUser(BuildContext context) async {
+    final usuarioViewModel = Provider.of<UsuarioViewModel>(context, listen: false);
+    
+    setState(() => _isLoading = true);
+    
+    try {
+      final usuario = _usuarioController.text;
+      final senha = _senhaController.text;
 
-    if (mounted) {
+      final userProfile = await usuarioViewModel.loginUser(usuario, senha);
+
+      if (!mounted) return;
+
       if (userProfile != null) {
         // Redireciona para a página apropriada com base no perfil
         if (userProfile.idperfil == 1) {
@@ -46,6 +58,15 @@ class LoginPageState extends State<LoginPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Usuário ou senha incorretos.')),
         );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao fazer login: ${e.toString()}')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -77,33 +98,35 @@ class LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 32),
               _buildTextField(
-                controller: usuarioController,
-                label: 'Matricula',
+                controller: _usuarioController,
+                label: 'Matrícula',
                 icon: Icons.person_outline,
               ),
               const SizedBox(height: 16),
               _buildTextField(
-                controller: senhaController,
+                controller: _senhaController,
                 label: 'Senha',
                 icon: Icons.lock_outline,
                 obscureText: true,
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: loginUser,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14.0),
-                  backgroundColor: Colors.blue,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  elevation: 5,
-                ),
-                child: const Text(
-                  'Entrar',
-                  style: TextStyle(fontSize: 18),
-                ),
-              ),
+              _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ElevatedButton(
+                      onPressed: () => _loginUser(context),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14.0),
+                        backgroundColor: Colors.blue,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        elevation: 5,
+                      ),
+                      child: const Text(
+                        'Entrar',
+                        style: TextStyle(fontSize: 18),
+                      ),
+                    ),
               const SizedBox(height: 16),
             ],
           ),

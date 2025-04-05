@@ -1,12 +1,23 @@
+import 'package:app_estoque_limpeza/data/repositories/usuario_repositories.dart';
 import 'package:app_estoque_limpeza/presentation/pages/fornecedor_page.dart';
 import 'package:app_estoque_limpeza/presentation/pages/homepage_admin.dart';
 import 'package:app_estoque_limpeza/presentation/pages/produto_page.dart';
 import 'package:app_estoque_limpeza/presentation/pages/users/login_page.dart';
 import 'package:app_estoque_limpeza/presentation/pages/usuarios_page.dart';
+import 'package:app_estoque_limpeza/presentation/viewmodel/usuario_viewmodel.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 void main() {
-  runApp(const MyApp());
+   runApp(
+    MultiProvider(
+      providers: [
+         ChangeNotifierProvider(create: (context) => UsuarioViewModel(UsuarioRepository())),
+        // Outros providers que você possa ter
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

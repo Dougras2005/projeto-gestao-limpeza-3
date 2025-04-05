@@ -12,15 +12,35 @@ class ProdutoRepositories {
     );
   }
 
-  Future<List<ProdutoModel>> getProduto({int? quantidadeMinima}) async {
+ Future<List<ProdutoModel>> getProduto({
+  int? quantidadeMinima, 
+  String? dataVencimentoMinima
+}) async {
   final db = await DatabaseHelper.initDb();
   
-  // Query SQL condicional
-  final List<Map<String, Object?>> produtoMaps = quantidadeMinima != null
+  // Build where clause and arguments dynamically
+  String whereClause = '';
+  List<dynamic> whereArgs = [];
+  
+  if (quantidadeMinima != null) {
+    whereClause += 'Quantidade >= ?';
+    whereArgs.add(quantidadeMinima);
+  }
+  
+  if (dataVencimentoMinima != null) {
+    if (whereClause.isNotEmpty) {
+      whereClause += ' AND ';
+    }
+    whereClause += 'Validade >= ?';
+    whereArgs.add(dataVencimentoMinima);
+  }
+  
+  // Query SQL with conditional filters
+  final List<Map<String, Object?>> produtoMaps = whereClause.isNotEmpty
       ? await db.query(
           'Produto',
-          where: 'Quantidade >= ?',
-          whereArgs: [quantidadeMinima],
+          where: whereClause,
+          whereArgs: whereArgs,
         )
       : await db.query('Produto');
 

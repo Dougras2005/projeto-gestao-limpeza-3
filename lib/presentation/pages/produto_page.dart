@@ -4,6 +4,7 @@ import 'package:app_estoque_limpeza/data/repositories/produto_repositories.dart'
 import 'package:app_estoque_limpeza/data/repositories/tipo_repositories.dart';
 import 'package:app_estoque_limpeza/presentation/pages/homepage_admin.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class ProdutosPage extends StatefulWidget {
   const ProdutosPage({super.key});
@@ -18,20 +19,16 @@ class ProdutosState extends State<ProdutosPage> {
   final TextEditingController _nomeController = TextEditingController();
   final TextEditingController _quantidadeController = TextEditingController();
   final TextEditingController _localController = TextEditingController();
-  final TextEditingController _fornecedorCustomController =
-      TextEditingController(); // Novo campo para fornecedor personalizado
+  final TextEditingController _fornecedorCustomController = TextEditingController();
   final TextEditingController _tipoCustomController = TextEditingController();
   final TextEditingController _dataEntradaController = TextEditingController();
   final TextEditingController _vencimentoController = TextEditingController();
 
   String? _tipo;
   String? _fornecedor;
-  List<String> _fornecedores =
-      [];
-      List<String> _tipos =
-      []; // Lista para armazenar fornecedores carregados
+  List<String> _fornecedores = [];
+  List<String> _tipos = [];
 
-  // Instâncias dos repositórios
   final ProdutoRepositories _materialRepository = ProdutoRepositories();
   final TipoRepository _tipoRepository = TipoRepository();
   final FornecedorRepository _fornecedorRepository = FornecedorRepository();
@@ -40,16 +37,16 @@ class ProdutosState extends State<ProdutosPage> {
   void initState() {
     super.initState();
     _listaDeFornecedores();
-    _listaTipo(); // Carrega os fornecedores ao inicializar
+    _listaTipo();
+    _dataEntradaController.text = DateFormat('dd/MM/yyyy').format(DateTime.now());
   }
 
-  _listaDeFornecedores() async {
+  Future<void> _listaDeFornecedores() async {
     try {
-      List<String> fornecedores =
-          await _fornecedorRepository.getNomesFornecedores();
+      List<String> fornecedores = await _fornecedorRepository.getNomesFornecedores();
       if (mounted) {
         setState(() {
-          _fornecedores = fornecedores; // Atualiza a lista de fornecedores
+          _fornecedores = fornecedores;
         });
       }
     } catch (e) {
@@ -61,13 +58,12 @@ class ProdutosState extends State<ProdutosPage> {
     }
   }
 
-  _listaTipo() async {
+  Future<void> _listaTipo() async {
     try {
-      List<String> tipo =
-          await _tipoRepository.getNomesTipo();
+      List<String> tipo = await _tipoRepository.getNomesTipo();
       if (mounted) {
         setState(() {
-          _tipos = tipo; // Atualiza a lista de fornecedores
+          _tipos = tipo;
         });
       }
     } catch (e) {
@@ -79,76 +75,79 @@ class ProdutosState extends State<ProdutosPage> {
     }
   }
 
+  Future<void> _selectDate(BuildContext context, TextEditingController controller) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) {
+      controller.text = DateFormat('dd/MM/yyyy').format(picked);
+    }
+  }
 
   Future<void> _cadastrarMaterial() async {
-  if (_formKey.currentState?.validate() ?? false) {
-    try {
-      // Verifica se _tipo e _fornecedor são nulos antes de tentar usá-los
-      if (_tipo == null || _tipo!.isEmpty) {
-        throw Exception('O tipo do produto não pode ser nulo.');
-      }
-      if (_fornecedor == null || _fornecedor!.isEmpty) {
-        throw Exception('O fornecedor do produto não pode ser nulo.');
-      }
+    if (_formKey.currentState?.validate() ?? false) {
+      try {
+        if (_tipo == null || _tipo!.isEmpty) {
+          throw Exception('O tipo do produto não pode ser nulo.');
+        }
+        if (_fornecedor == null || _fornecedor!.isEmpty) {
+          throw Exception('O fornecedor do produto não pode ser nulo.');
+        }
 
-      // Agora, como já sabemos que _tipo e _fornecedor não são nulos, podemos proceder com o uso do método
-      final idTipo = await _tipoRepository.getIdByTipo(_tipo!);
-      print (idTipo);
-      final idFornecedor = await _fornecedorRepository.getIdByForenecedor(_fornecedor!);
-      print(idFornecedor);
+        final idTipo = await _tipoRepository.getIdByTipo(_tipo!);
+        final idFornecedor = await _fornecedorRepository.getIdByForenecedor(_fornecedor!);
 
-      final material = ProdutoModel(
-        idMaterial: null,
-        codigo: _codigoController.text,
-        nome: _nomeController.text,
-        quantidade: int.parse(_quantidadeController.text),
-        validade: _vencimentoController.text.isNotEmpty ? _vencimentoController.text : null,
-        local: _localController.text,
-        idtipo: idTipo!,
-        idfornecedor: idFornecedor!,
-        entrada: _dataEntradaController.text,
-      );
-
-      // Tenta salvar o produto
-      await _materialRepository.insertProduto(material);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Material cadastrado com sucesso!')),
+        final material = ProdutoModel(
+          idMaterial: null,
+          codigo: _codigoController.text,
+          nome: _nomeController.text,
+          quantidade: int.parse(_quantidadeController.text),
+          validade: _vencimentoController.text.isNotEmpty ? _vencimentoController.text : null,
+          local: _localController.text,
+          idtipo: idTipo!,
+          idfornecedor: idFornecedor!,
+          entrada: _dataEntradaController.text,
         );
 
-        // Limpa os campos após cadastro
-        _codigoController.clear();
-        _nomeController.clear();
-        _quantidadeController.clear();
-        _localController.clear();
-        _fornecedorCustomController.clear();
-        _tipoCustomController.clear();
-        _dataEntradaController.clear();
-        _vencimentoController.clear();
-        setState(() {
-          _tipo = null;
-          _fornecedor = null;
-        });
+        await _materialRepository.insertProduto(material);
 
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const HomePageAdmin()),
-          (Route<dynamic> route) => false, // Remove todas as rotas anteriores
-        );
-      }
-    } catch (e, stackTrace) {
-      debugPrint('Erro: $e\n$stackTrace');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao cadastrar material: $e')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Material cadastrado com sucesso!')),
+          );
+
+          _codigoController.clear();
+          _nomeController.clear();
+          _quantidadeController.clear();
+          _localController.clear();
+          _fornecedorCustomController.clear();
+          _tipoCustomController.clear();
+          _dataEntradaController.clear();
+          _vencimentoController.clear();
+          setState(() {
+            _tipo = null;
+            _fornecedor = null;
+          });
+
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const HomePageAdmin()),
+            (Route<dynamic> route) => false,
+          );
+        }
+      } catch (e, stackTrace) {
+        debugPrint('Erro: $e\n$stackTrace');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erro ao cadastrar material: $e')),
+          );
+        }
       }
     }
   }
-}
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -178,7 +177,7 @@ class ProdutosState extends State<ProdutosPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Cadastro de Produtos',
-        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         backgroundColor: Colors.blue,
       ),
       body: Padding(
@@ -244,12 +243,12 @@ class ProdutosState extends State<ProdutosPage> {
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   value: _tipo,
-                  decoration: inputDecoration.copyWith(labelText: 'tipo'),
+                  decoration: inputDecoration.copyWith(labelText: 'Tipo'),
                   items: _tipos
                       .map((tipo) => DropdownMenuItem(
-                            value: tipo, // Ou outro campo identificador
+                            value: tipo,
                             child: Text(
-                              tipo, // Exibe o nome do tipo
+                              tipo,
                               style: const TextStyle(color: Colors.black),
                             ),
                           ))
@@ -257,6 +256,9 @@ class ProdutosState extends State<ProdutosPage> {
                   onChanged: (value) {
                     setState(() {
                       _tipo = value;
+                      if (value != "Perecivel") {
+                        _vencimentoController.clear();
+                      }
                     });
                   },
                   validator: (value) {
@@ -281,15 +283,14 @@ class ProdutosState extends State<ProdutosPage> {
                     },
                   ),
                 const SizedBox(height: 16),
-                // Dropdown para selecionar fornecedor, agora com lista dinâmica
                 DropdownButtonFormField<String>(
                   value: _fornecedor,
                   decoration: inputDecoration.copyWith(labelText: 'Fornecedor'),
                   items: _fornecedores
                       .map((fornecedor) => DropdownMenuItem(
-                            value: fornecedor, // Ou outro campo identificador
+                            value: fornecedor,
                             child: Text(
-                              fornecedor, // Exibe o nome do fornecedor
+                              fornecedor,
                               style: const TextStyle(color: Colors.black),
                             ),
                           ))
@@ -297,7 +298,7 @@ class ProdutosState extends State<ProdutosPage> {
                   onChanged: (value) {
                     setState(() {
                       _fornecedor = value;
-                    });
+                    }); 
                   },
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -311,7 +312,8 @@ class ProdutosState extends State<ProdutosPage> {
                   controller: _dataEntradaController,
                   decoration:
                       inputDecoration.copyWith(labelText: 'Data de Entrada'),
-                  keyboardType: TextInputType.datetime,
+                  readOnly: true,
+                  onTap: () => _selectDate(context, _dataEntradaController),
                   style: const TextStyle(color: Colors.black),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -321,16 +323,19 @@ class ProdutosState extends State<ProdutosPage> {
                   },
                 ),
                 const SizedBox(height: 16),
-                if (_tipo == "Perecível" || _tipo == "Outro")
+                if (_tipo == "Perecivel")
                   TextFormField(
                     controller: _vencimentoController,
-                    decoration:
-                        inputDecoration.copyWith(labelText: 'Vencimento'),
-                    keyboardType: TextInputType.datetime,
+                    decoration: inputDecoration.copyWith(
+                      labelText: 'Data de Validade',
+                      suffixIcon: const Icon(Icons.calendar_today),
+                    ),
+                    readOnly: true,
+                    onTap: () => _selectDate(context, _vencimentoController),
                     style: const TextStyle(color: Colors.black),
                     validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'O vencimento é obrigatório';
+                      if (_tipo == "Perecível" && (value == null || value.isEmpty)) {
+                        return 'A data de validade é obrigatória para produtos perecíveis';
                       }
                       return null;
                     },
