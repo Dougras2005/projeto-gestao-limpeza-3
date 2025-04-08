@@ -1,11 +1,9 @@
 import 'package:app_estoque_limpeza/data/model/movimentacao_model.dart';
 import 'package:app_estoque_limpeza/presentation/viewmodel/produto_viewmodel.dart';
-import 'package:app_estoque_limpeza/presentation/viewmodel/usuario_viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:app_estoque_limpeza/data/model/produto_model.dart';
 import 'package:app_estoque_limpeza/data/repositories/movimentacao_repositories.dart';
 import 'package:flutter_multi_formatter/flutter_multi_formatter.dart';
-import 'package:provider/provider.dart';
 
 class ProdutoDetalhesPage extends StatefulWidget {
   final ProdutoModel produto;
@@ -20,27 +18,15 @@ class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
   final TextEditingController _quantidadeController = TextEditingController();
   final TextEditingController _dataController = TextEditingController();
   final MovimentacaoRepository _movimentacaoRepository = MovimentacaoRepository();
- 
+  final ProdutoViewModel _produtoViewModel = ProdutoViewModel();
   String _tipoMovimentacao = 'Entrada';
   ProdutoModel? _produtoAtual; // Removido o late e tornando nullable
-  bool _isAdmin = false;
-  late UsuarioViewModel _usuarioViewModel;
 
   @override
   void initState() {
     super.initState();
+    // Inicializa o produto atual imediatamente
     _initializeProdutoAtual();
-    // Adicionamos um post-frame callback para acessar o Provider após o build
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkUserPermission();
-    });
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Obtemos os ViewModels aqui
-    _usuarioViewModel = Provider.of<UsuarioViewModel>(context, listen: false);
   }
 
   void _initializeProdutoAtual() {
@@ -57,17 +43,6 @@ class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
     );
   }
 
-  
-  void _checkUserPermission() {
-    final usuarioViewModel = _usuarioViewModel;
-    _isAdmin = usuarioViewModel.usuarioLogado?.idperfil == 1;
-    
-    // Se não for admin, seta o tipo padrão como Saída
-    if (!_isAdmin) {
-      _tipoMovimentacao = 'Saída';
-    }
-  }
-
   @override
   void dispose() {
     _quantidadeController.dispose();
@@ -76,14 +51,9 @@ class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
   }
 
   Future<void> _registrarMovimentacao() async {
+    // Adiciona verificação de null safety
     if (_produtoAtual == null) {
       _showDialog('Erro', 'Produto não foi carregado corretamente.');
-      return;
-    }
-
-    // Verifica se é uma entrada e se o usuário tem permissão
-    if (_tipoMovimentacao == 'Entrada' && !_isAdmin) {
-      _showDialog('Acesso Negado', 'Somente administradores podem registrar entradas.');
       return;
     }
 
@@ -106,19 +76,14 @@ class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
     }
 
     try {
-      final usuarioViewModel = Provider.of<UsuarioViewModel>(context, listen: false);
-      final userId = usuarioViewModel.usuarioLogado?.idusuario ?? 0;
-
       final movimentacao = Movimentacao(
         entradaData: _tipoMovimentacao == 'Entrada' ? data : '',
         saidaData: _tipoMovimentacao == 'Saída' ? data : '',
         idproduto: _produtoAtual!.idMaterial!,
-        idusuario: userId,
+        idusuario: 1,
       );
 
       await _movimentacaoRepository.insertMovimentacao(movimentacao);
-      
-      final produtoViewModel = Provider.of<ProdutoViewModel>(context, listen: false);
       
       setState(() {
         _produtoAtual = ProdutoModel(
@@ -136,13 +101,14 @@ class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
         );
       });
 
-      await produtoViewModel.updateProduto(_produtoAtual!);
+      await _produtoViewModel.updateProduto(_produtoAtual!);
 
       _quantidadeController.clear();
       _dataController.clear();
 
       _showDialog('Sucesso', 'Movimentação registrada com sucesso.\n'
           'Nova quantidade: ${_produtoAtual!.quantidade}');
+          Navigator.pushNamed(context, "/ProdutoDetalhesPage");
     } catch (e) {
       _showDialog('Erro', 'Ocorreu um erro ao registrar a movimentação: $e');
     }
@@ -165,7 +131,8 @@ class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
   }
 
   @override
-   Widget build(BuildContext context) {
+  Widget build(BuildContext context) {
+    // Adiciona verificação para caso o produto ainda não tenha sido inicializado
     if (_produtoAtual == null) {
       return const Scaffold(
         body: Center(
@@ -239,49 +206,27 @@ class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
                           color: Colors.blueGrey,
                         ),
                       ),
-                       const Divider(),
-                      _isAdmin 
-                          ? DropdownButtonFormField<String>(
-                              value: _tipoMovimentacao,
-                              decoration: InputDecoration(
-                                labelText: 'Tipo de Movimentação',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8.0),
-                                ),
-                              ),
-                              items: ['Entrada', 'Saída']
-                                  .map((tipo) => DropdownMenuItem(
-                                        value: tipo,
-                                        child: Text(tipo),
-                                      ))
-                                  .toList(),
-                              onChanged: (valor) {
-                                setState(() {
-                                  _tipoMovimentacao = valor!;
-                                });
-                              },
-                            )
-                          : IgnorePointer(
-                              child: DropdownButtonFormField<String>(
-                                value: 'Saída',
-                                decoration: InputDecoration(
-                                  labelText: 'Tipo de Movimentação (Somente Saída)',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8.0)),
-                                  ),
-                                 items: ['Entrada', 'Saída']
-                                    .map((tipo) => DropdownMenuItem(
-                                          value: tipo,
-                                          child: Text(tipo),
-                                        ))
-                                    .toList(),
-                                    onChanged: (valor) {
-                                setState(() {
-                                  _tipoMovimentacao = 'Saída';
-                                });
-                              },
-                              ),
-                            ),
+                      const Divider(),
+                      DropdownButtonFormField<String>(
+                        value: _tipoMovimentacao,
+                        decoration: InputDecoration(
+                          labelText: 'Tipo de Movimentação',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                          ),
+                        ),
+                        items: ['Entrada', 'Saída']
+                            .map((tipo) => DropdownMenuItem(
+                                  value: tipo,
+                                  child: Text(tipo),
+                                ))
+                            .toList(),
+                        onChanged: (valor) {
+                          setState(() {
+                            _tipoMovimentacao = valor!;
+                          });
+                        },
+                      ),
                       const SizedBox(height: 10),
                       TextField(
                         controller: _quantidadeController,
@@ -332,26 +277,29 @@ class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
                               ),
                             ),
                             const SizedBox(width: 20),
-                            ElevatedButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.grey,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10.0),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 24, vertical: 12),
-                              ),
-                              child: const Text(
-                                'Voltar',
-                                style: TextStyle(fontSize: 16),
-                              ),
+                      Center(
+                        child: ElevatedButton(
+                          onPressed:(){
+                            Navigator.popAndPushNamed(context, "/ProdutoDetalhesPage");
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blueAccent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10.0),
                             ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
+                          ),
+                          child: const Text(
+                            'Voltar',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ),
+                      ),
                           ],
                         ),
                       ),
+                      
                     ],
                   ),
                 ),
