@@ -14,7 +14,7 @@ class DatabaseHelper {
     return await databaseFactoryFfi.openDatabase(
       path,
       options: OpenDatabaseOptions(
-        version: 2,
+        version: 4,
         onCreate: (db, version) async {
           // Criação das tabelas
           await db.execute('''
@@ -37,7 +37,8 @@ class DatabaseHelper {
               nome TEXT NOT NULL,
               endereco TEXT NOT NULL,
               telefone INTEGER NOT NULL,
-              cnpj TEXT
+              cnpj TEXT,
+              email TEXT
             );
           ''');
 
@@ -87,6 +88,10 @@ class DatabaseHelper {
           if (oldVersion < 2) {
             await db.execute("ALTER TABLE movimentacao RENAME COLUMN entrada TO entrada_data;");
             await db.execute("ALTER TABLE movimentacao RENAME COLUMN saida TO saida_data;");
+          }else if (oldVersion < 3) {
+            await db.execute("ALTER TABLE fornecedor ADD COLUMN email TEXT;");
+          }else if (oldVersion < 4) {
+            await db.execute("ALTER TABLE fornecedor ADD COLUMN cnpj TEXT;");
           }
         },
       ),

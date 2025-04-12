@@ -2,7 +2,6 @@ import 'package:app_estoque_limpeza/presentation/viewmodel/usuario_viewmodel.dar
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:app_estoque_limpeza/presentation/pages/homepage_funcionario.dart';
-import 'package:app_estoque_limpeza/data/repositories/usuario_repositories.dart';
 import 'package:app_estoque_limpeza/presentation/pages/homepage_admin.dart';
 
 class LoginPage extends StatefulWidget {

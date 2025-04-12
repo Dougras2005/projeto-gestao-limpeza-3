@@ -23,6 +23,7 @@ class FornecedorRepository {
         endereco: map['endereco'] as String,
         telefone: map['telefone'] as String,
         cnpj: map['cnpj'] as String,
+        email: map['email'] as String,
       );
     }).toList();
   }

@@ -4,13 +4,15 @@ class Fornecedor {
   final String endereco;
   final String telefone; 
   final String cnpj;
+  final String email;
 
   Fornecedor(
       {this.idfornecedor,
       required this.nome,
       required this.endereco,
       required this.telefone,
-      required this.cnpj,});
+      required this.cnpj,
+      required this.email,});
 
   Map<String, dynamic> toMap() {
     return {
@@ -19,6 +21,7 @@ class Fornecedor {
       'endereco': endereco,
       'telefone': telefone,
       'cnpj': cnpj,
+      'email': email,
     };
   }
 }

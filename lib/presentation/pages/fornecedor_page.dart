@@ -1,5 +1,6 @@
-import 'package:app_estoque_limpeza/data/repositories/fornecedor_repository.dart';
 import 'package:flutter/material.dart';
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
+import 'package:app_estoque_limpeza/data/repositories/fornecedor_repository.dart';
 import 'package:app_estoque_limpeza/data/model/fornecedor_model.dart';
 
 class FornecedorPage extends StatefulWidget {
@@ -9,54 +10,106 @@ class FornecedorPage extends StatefulWidget {
   FornecedorState createState() => FornecedorState();
 }
 
-class FornecedorState extends State<FornecedorPage> {
+class FornecedorState extends State<FornecedorPage> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nomeController = TextEditingController();
   final TextEditingController _enderecoController = TextEditingController();
   final TextEditingController _telefoneController = TextEditingController();
   final TextEditingController _cnpjController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
 
-  // Instância do repositório
+  // Máscaras
+  final _telefoneFormatter = MaskTextInputFormatter(
+    mask: '(##) #####-####',
+    filter: {"#": RegExp(r'[0-9]')},
+  );
+
+  final _cnpjFormatter = MaskTextInputFormatter(
+    mask: '##.###.###/####-##',
+    filter: {"#": RegExp(r'[0-9]')},
+  );
+
   final FornecedorRepository _fornecedorRepository = FornecedorRepository();
+  List<Fornecedor> _fornecedores = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _carregarFornecedores();
+  }
+
+  Future<void> _carregarFornecedores() async {
+    final fornecedores = await _fornecedorRepository.getFornecedores();
+    setState(() {
+      _fornecedores = fornecedores;
+    });
+  }
 
   Future<void> _cadastrarFornecedor() async {
     if (_formKey.currentState?.validate() ?? false) {
       try {
-        // Criar o objeto fornecedor com os dados dos campos
         final fornecedor = Fornecedor(
-          idfornecedor: null, // ID será gerado automaticamente
+          idfornecedor: null,
           nome: _nomeController.text,
           endereco: _enderecoController.text,
           telefone: _telefoneController.text,
           cnpj: _cnpjController.text,
+          email: _emailController.text,
         );
 
-        // Inserir o fornecedor no banco de dados
         await _fornecedorRepository.insertFornecedor(fornecedor);
 
-        // Verifica se o widget ainda está montado antes de usar o contexto
         if (!mounted) return;
 
-        // Exibir mensagem de sucesso
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Fornecedor cadastrado com sucesso!')),
         );
 
-        // Limpar os campos após o cadastro
+        // Limpar campos e recarregar lista
         _nomeController.clear();
         _enderecoController.clear();
         _telefoneController.clear();
         _cnpjController.clear();
+        _emailController.clear();
+        
+        await _carregarFornecedores();
+        _tabController.animateTo(1); // Muda para a aba de listagem
       } catch (e) {
-        // Verifica se o widget ainda está montado antes de usar o contexto
         if (!mounted) return;
-
-        // Exibir mensagem de erro
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erro ao cadastrar fornecedor: $e')),
         );
       }
     }
+  }
+
+  Future<void> _excluirFornecedor(int id) async {
+    try {
+      await _fornecedorRepository.deleteFornecedor(id);
+      await _carregarFornecedores();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Fornecedor excluído com sucesso!')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao excluir fornecedor: $e')),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _nomeController.dispose();
+    _enderecoController.dispose();
+    _telefoneController.dispose();
+    _cnpjController.dispose();
+    _emailController.dispose();
+    super.dispose();
   }
 
   @override
@@ -86,79 +139,135 @@ class FornecedorState extends State<FornecedorPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Cadastro de Fornecedor'),
+        title: const Text('Fornecedores'),
         backgroundColor: Colors.blue,
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(icon: Icon(Icons.person_add), text: 'Cadastro'),
+            Tab(icon: Icon(Icons.list), text: 'Listagem'),
+          ],
+        ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextFormField(
-                  controller: _nomeController,
-                  decoration: inputDecoration.copyWith(labelText: 'Nome'),
-                  style: const TextStyle(color: Colors.black),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'O nome é obrigatório';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _enderecoController,
-                  decoration: inputDecoration.copyWith(labelText: 'Endereço'),
-                  style: const TextStyle(color: Colors.black),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'O endereço é obrigatório';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-TextFormField(
-  controller: _cnpjController,
-  decoration: inputDecoration.copyWith(labelText: 'CNPJ'),
-  keyboardType: TextInputType.number,
-  style: const TextStyle(color: Colors.black),
-  validator: (value) {
-    if (value == null || value.isEmpty) {
-      return 'O CNPJ é obrigatório';
-    }
-    // Remove caracteres não numéricos
-    final cleanedValue = value.replaceAll(RegExp(r'[^0-9]'), '');
-    // Verifica se tem 14 dígitos
-    final regex = RegExp(r'^\d{14}$');
-    if (!regex.hasMatch(cleanedValue)) {
-      return 'Por favor, insira um CNPJ válido (14 dígitos)';
-    }
-    return null;
-  },
-),
-                const SizedBox(height: 32),
-                Center(
-                  child: ElevatedButton(
-                    onPressed: _cadastrarFornecedor,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 32, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          // ABA DE CADASTRO
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Form(
+              key: _formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextFormField(
+                      controller: _nomeController,
+                      decoration: inputDecoration.copyWith(labelText: 'Nome'),
+                      validator: (value) => value?.isEmpty ?? true ? 'O nome é obrigatório' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _enderecoController,
+                      decoration: inputDecoration.copyWith(labelText: 'Endereço'),
+                      validator: (value) => value?.isEmpty ?? true ? 'O endereço é obrigatório' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _cnpjController,
+                      inputFormatters: [_cnpjFormatter],
+                      decoration: inputDecoration.copyWith(labelText: 'CNPJ'),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value?.isEmpty ?? true) return 'O CNPJ é obrigatório';
+                        final cleanedValue = value!.replaceAll(RegExp(r'[^0-9]'), '');
+                        return cleanedValue.length != 14 ? 'CNPJ deve ter 14 dígitos' : null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _telefoneController,
+                      inputFormatters: [_telefoneFormatter],
+                      decoration: inputDecoration.copyWith(labelText: 'Telefone'),
+                      keyboardType: TextInputType.phone,
+                      validator: (value) {
+                        if (value?.isEmpty ?? true) return 'O telefone é obrigatório';
+                        final cleanedValue = value!.replaceAll(RegExp(r'[^0-9]'), '');
+                        return (cleanedValue.length != 10 && cleanedValue.length != 11) 
+                            ? 'Telefone deve ter 10 ou 11 dígitos' : null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _emailController,
+                      decoration: inputDecoration.copyWith(labelText: 'Email'),
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (value) {
+                        if (value?.isEmpty ?? true) return 'O email é obrigatório';
+                        return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value!)
+                            ? null : 'Email inválido';
+                      },
+                    ),
+                    const SizedBox(height: 32),
+                    Center(
+                      child: ElevatedButton(
+                        onPressed: _cadastrarFornecedor,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: const Text('Cadastrar'),
                       ),
                     ),
-                    child: const Text('Cadastrar'),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
+          
+          // ABA DE LISTAGEM
+          RefreshIndicator(
+            onRefresh: _carregarFornecedores,
+            child: _fornecedores.isEmpty
+                ? const Center(child: Text('Nenhum fornecedor cadastrado'))
+                : ListView.builder(
+                    itemCount: _fornecedores.length,
+                    itemBuilder: (context, index) {
+                      final fornecedor = _fornecedores[index];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                        child: ListTile(
+                          title: Text(fornecedor.nome),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('CNPJ: ${fornecedor.cnpj}'),
+                              Text('Telefone: ${fornecedor.telefone}'),
+                              Text('Email: ${fornecedor.email}'),
+                            ],
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _excluirFornecedor(fornecedor.idfornecedor!),
+                          ),
+                          onTap: () {
+                            // Preenche os campos para edição (opcional)
+                            _tabController.animateTo(0);
+                            _nomeController.text = fornecedor.nome;
+                            _enderecoController.text = fornecedor.endereco;
+                            _telefoneController.text = fornecedor.telefone.toString();
+                            _cnpjController.text = fornecedor.cnpj;
+                            _emailController.text = fornecedor.email;
+                          },
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
       ),
     );
   }
