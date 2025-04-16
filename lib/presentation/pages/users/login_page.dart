@@ -14,12 +14,14 @@ class LoginPage extends StatefulWidget {
 class LoginPageState extends State<LoginPage> {
   final TextEditingController _usuarioController = TextEditingController();
   final TextEditingController _senhaController = TextEditingController();
+  final FocusNode _senhaFocusNode = FocusNode();
   bool _isLoading = false;
 
   @override
   void dispose() {
     _usuarioController.dispose();
     _senhaController.dispose();
+    _senhaFocusNode.dispose();
     super.dispose();
   }
 
@@ -100,6 +102,7 @@ class LoginPageState extends State<LoginPage> {
                 controller: _usuarioController,
                 label: 'Matrícula',
                 icon: Icons.person_outline,
+                onSubmitted: (_) => _senhaFocusNode.requestFocus(),
               ),
               const SizedBox(height: 16),
               _buildTextField(
@@ -107,6 +110,8 @@ class LoginPageState extends State<LoginPage> {
                 label: 'Senha',
                 icon: Icons.lock_outline,
                 obscureText: true,
+                focusNode: _senhaFocusNode,
+                onSubmitted: (_) => _loginUser(context),
               ),
               const SizedBox(height: 24),
               _isLoading
@@ -139,10 +144,15 @@ class LoginPageState extends State<LoginPage> {
     required String label,
     required IconData icon,
     bool obscureText = false,
+    FocusNode? focusNode,
+    void Function(String)? onSubmitted,
   }) {
     return TextField(
       controller: controller,
       obscureText: obscureText,
+      focusNode: focusNode,
+      onSubmitted: onSubmitted,
+      textInputAction: obscureText ? TextInputAction.done : TextInputAction.next,
       decoration: InputDecoration(
         prefixIcon: Icon(icon, color: Colors.blue),
         labelText: label,

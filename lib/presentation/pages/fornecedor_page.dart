@@ -32,6 +32,7 @@ class FornecedorState extends State<FornecedorPage> with SingleTickerProviderSta
 
   final FornecedorRepository _fornecedorRepository = FornecedorRepository();
   List<Fornecedor> _fornecedores = [];
+  int? _fornecedorEmEdicaoId; // Null quando estiver cadastrando novo
 
   @override
   void initState() {
@@ -47,11 +48,20 @@ class FornecedorState extends State<FornecedorPage> with SingleTickerProviderSta
     });
   }
 
-  Future<void> _cadastrarFornecedor() async {
+  void _limparCampos() {
+    _nomeController.clear();
+    _enderecoController.clear();
+    _telefoneController.clear();
+    _cnpjController.clear();
+    _emailController.clear();
+    _fornecedorEmEdicaoId = null;
+  }
+
+  Future<void> _salvarFornecedor() async {
     if (_formKey.currentState?.validate() ?? false) {
       try {
         final fornecedor = Fornecedor(
-          idfornecedor: null,
+          idfornecedor: _fornecedorEmEdicaoId,
           nome: _nomeController.text,
           endereco: _enderecoController.text,
           telefone: _telefoneController.text,
@@ -59,27 +69,30 @@ class FornecedorState extends State<FornecedorPage> with SingleTickerProviderSta
           email: _emailController.text,
         );
 
-        await _fornecedorRepository.insertFornecedor(fornecedor);
+        if (_fornecedorEmEdicaoId == null) {
+          // Cadastrar novo fornecedor
+          await _fornecedorRepository.insertFornecedor(fornecedor);
+        } else {
+          // Atualizar fornecedor existente
+          await _fornecedorRepository.updateFornecedor(fornecedor);
+        }
 
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Fornecedor cadastrado com sucesso!')),
+          SnackBar(content: Text(_fornecedorEmEdicaoId == null 
+              ? 'Fornecedor cadastrado com sucesso!' 
+              : 'Fornecedor atualizado com sucesso!')),
         );
 
         // Limpar campos e recarregar lista
-        _nomeController.clear();
-        _enderecoController.clear();
-        _telefoneController.clear();
-        _cnpjController.clear();
-        _emailController.clear();
-        
+        _limparCampos();
         await _carregarFornecedores();
         _tabController.animateTo(1); // Muda para a aba de listagem
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao cadastrar fornecedor: $e')),
+          SnackBar(content: Text('Erro ao salvar fornecedor: $e')),
         );
       }
     }
@@ -99,6 +112,19 @@ class FornecedorState extends State<FornecedorPage> with SingleTickerProviderSta
         SnackBar(content: Text('Erro ao excluir fornecedor: $e')),
       );
     }
+  }
+
+  void _editarFornecedor(Fornecedor fornecedor) {
+    setState(() {
+      _fornecedorEmEdicaoId = fornecedor.idfornecedor;
+    });
+    
+    _nomeController.text = fornecedor.nome;
+    _enderecoController.text = fornecedor.endereco;
+    _telefoneController.text = fornecedor.telefone;
+    _cnpjController.text = fornecedor.cnpj;
+    _emailController.text = fornecedor.email;
+    _tabController.animateTo(0); // Muda para a aba de cadastro/edição
   }
 
   @override
@@ -152,7 +178,7 @@ class FornecedorState extends State<FornecedorPage> with SingleTickerProviderSta
       body: TabBarView(
         controller: _tabController,
         children: [
-          // ABA DE CADASTRO
+          // ABA DE CADASTRO/EDIÇÃO
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Form(
@@ -161,6 +187,32 @@ class FornecedorState extends State<FornecedorPage> with SingleTickerProviderSta
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (_fornecedorEmEdicaoId != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.edit, color: Colors.blue),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Editando Fornecedor',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                color: Colors.blue,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              icon: const Icon(Icons.clear, color: Colors.red),
+                              onPressed: () {
+                                _limparCampos();
+                                setState(() {});
+                              },
+                              tooltip: 'Cancelar edição',
+                            ),
+                          ],
+                        ),
+                      ),
                     TextFormField(
                       controller: _nomeController,
                       decoration: inputDecoration.copyWith(labelText: 'Nome'),
@@ -211,7 +263,7 @@ class FornecedorState extends State<FornecedorPage> with SingleTickerProviderSta
                     const SizedBox(height: 32),
                     Center(
                       child: ElevatedButton(
-                        onPressed: _cadastrarFornecedor,
+                        onPressed: _salvarFornecedor,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue,
                           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
@@ -219,7 +271,7 @@ class FornecedorState extends State<FornecedorPage> with SingleTickerProviderSta
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        child: const Text('Cadastrar'),
+                        child: Text(_fornecedorEmEdicaoId == null ? 'Cadastrar' : 'Salvar Alterações'),
                       ),
                     ),
                   ],
@@ -253,15 +305,7 @@ class FornecedorState extends State<FornecedorPage> with SingleTickerProviderSta
                             icon: const Icon(Icons.delete, color: Colors.red),
                             onPressed: () => _excluirFornecedor(fornecedor.idfornecedor!),
                           ),
-                          onTap: () {
-                            // Preenche os campos para edição (opcional)
-                            _tabController.animateTo(0);
-                            _nomeController.text = fornecedor.nome;
-                            _enderecoController.text = fornecedor.endereco;
-                            _telefoneController.text = fornecedor.telefone.toString();
-                            _cnpjController.text = fornecedor.cnpj;
-                            _emailController.text = fornecedor.email;
-                          },
+                          onTap: () => _editarFornecedor(fornecedor),
                         ),
                       );
                     },
@@ -269,6 +313,16 @@ class FornecedorState extends State<FornecedorPage> with SingleTickerProviderSta
           ),
         ],
       ),
+      floatingActionButton: _tabController.index == 1
+          ? FloatingActionButton(
+              onPressed: () {
+                _limparCampos();
+                _tabController.animateTo(0);
+              },
+              backgroundColor: Colors.blue,
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 }

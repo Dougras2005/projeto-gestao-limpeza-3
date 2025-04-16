@@ -5,27 +5,26 @@ import 'package:app_estoque_limpeza/data/model/produto_model.dart';
 import 'package:app_estoque_limpeza/data/repositories/movimentacao_repositories.dart';
 import 'package:flutter_multi_formatter/flutter_multi_formatter.dart';
 
-class ProdutoDetalhesPage extends StatefulWidget {
+class ProdutoDetalhesPageFun extends StatefulWidget {
   final ProdutoModel produto;
 
-  const ProdutoDetalhesPage({super.key, required this.produto});
+  const ProdutoDetalhesPageFun({super.key, required this.produto});
 
   @override
-  ProdutoDetalhesPageState createState() => ProdutoDetalhesPageState();
+  ProdutoDetalhesPageFunState createState() => ProdutoDetalhesPageFunState();
 }
 
-class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
+class ProdutoDetalhesPageFunState extends State<ProdutoDetalhesPageFun> {
   final TextEditingController _quantidadeController = TextEditingController();
   final TextEditingController _dataController = TextEditingController();
   final MovimentacaoRepository _movimentacaoRepository = MovimentacaoRepository();
   final ProdutoViewModel _produtoViewModel = ProdutoViewModel();
-  String _tipoMovimentacao = 'Entrada';
-  ProdutoModel? _produtoAtual; // Removido o late e tornando nullable
+  final String _tipoMovimentacao = 'Saida';
+  ProdutoModel? _produtoAtual;
 
   @override
   void initState() {
     super.initState();
-    // Inicializa o produto atual imediatamente
     _initializeProdutoAtual();
   }
 
@@ -52,8 +51,7 @@ class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
     super.dispose();
   }
 
-  Future<void> _registrarMovimentacao() async {
-    // Adiciona verificação de null safety
+  Future<void> _registrarSaida() async {
     if (_produtoAtual == null) {
       _showDialog('Erro', 'Produto não foi carregado corretamente.');
       return;
@@ -72,7 +70,7 @@ class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
       return;
     }
 
-    if (_tipoMovimentacao == 'Saída' && quantidade > _produtoAtual!.quantidade) {
+    if (quantidade > _produtoAtual!.quantidade) {
       _showDialog('Erro', 'Quantidade insuficiente em estoque.');
       return;
     }
@@ -82,7 +80,7 @@ class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
         entradaData: _tipoMovimentacao == 'Entrada' ? data : '',
         saidaData: _tipoMovimentacao == 'Saída' ? data : '',
         idproduto: _produtoAtual!.idMaterial!,
-        idusuario: 1,
+        idusuario: 2,
       );
 
       await _movimentacaoRepository.insertMovimentacao(movimentacao);
@@ -92,9 +90,7 @@ class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
           idMaterial: _produtoAtual!.idMaterial,
           codigo: _produtoAtual!.codigo,
           nome: _produtoAtual!.nome,
-          quantidade: _tipoMovimentacao == 'Entrada'
-              ? _produtoAtual!.quantidade + quantidade
-              : _produtoAtual!.quantidade - quantidade,
+          quantidade: _produtoAtual!.quantidade - quantidade,
           validade: _produtoAtual!.validade,
           local: _produtoAtual!.local,
           idtipo: _produtoAtual!.idtipo,
@@ -110,11 +106,10 @@ class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
       _quantidadeController.clear();
       _dataController.clear();
 
-      _showDialog('Sucesso', 'Movimentação registrada com sucesso.\n'
+      _showDialog('Sucesso', 'Saída registrada com sucesso.\n'
           'Nova quantidade: ${_produtoAtual!.quantidade}');
-          Navigator.pushNamed(context, "/ProdutoDetalhesPage");
     } catch (e) {
-      _showDialog('Erro', 'Ocorreu um erro ao registrar a movimentação: $e');
+      _showDialog('Erro', 'Ocorreu um erro ao registrar a saída: $e');
     }
   }
 
@@ -126,7 +121,7 @@ class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
         content: Text(message),
         actions: <Widget>[
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(context).popAndPushNamed('/HomePageFuncionario'),
             child: const Text('OK'),
           ),
         ],
@@ -136,7 +131,6 @@ class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Adiciona verificação para caso o produto ainda não tenha sido inicializado
     if (_produtoAtual == null) {
       return const Scaffold(
         body: Center(
@@ -148,7 +142,7 @@ class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Detalhes do Produto: ${_produtoAtual!.nome}',
+          'Saída de Produto: ${_produtoAtual!.nome}',
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         backgroundColor: Colors.blueAccent,
@@ -169,24 +163,21 @@ class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Detalhes do Produto',
+                      const Text(
+                        'Informações do Produto',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
-                          color: Colors.blueGrey[800],
+                          color: Colors.blueGrey,
                         ),
                       ),
                       const Divider(),
-                      Text('Código: ${_produtoAtual!.codigo}'),
-                      Text('Nome: ${_produtoAtual!.nome}'),
-                      Text('Quantidade: ${_produtoAtual!.quantidade}'),
-                      Text('Data de Entrada: ${_produtoAtual!.entrada}'),
+                      _buildInfoRow('Código', _produtoAtual!.codigo),
+                      _buildInfoRow('Nome', _produtoAtual!.nome),
+                      _buildInfoRow('Quantidade em estoque', _produtoAtual!.quantidade.toString()),
+                      _buildInfoRow('Local', _produtoAtual!.local),
                       if (_produtoAtual!.validade != null)
-                        Text('Validade: ${_produtoAtual!.validade}'),
-                      Text('Local: ${_produtoAtual!.local}'),
-                      Text('Tipo: ${_produtoAtual!.tipoProduto}'),
-                      Text('Fornecedor: ${_produtoAtual!.nomeFornecedor}'),
+                        _buildInfoRow('Validade', _produtoAtual!.validade!),
                     ],
                   ),
                 ),
@@ -203,7 +194,7 @@ class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Registrar Movimentação',
+                        'Registrar Saída',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
@@ -211,32 +202,16 @@ class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
                         ),
                       ),
                       const Divider(),
-                      DropdownButtonFormField<String>(
-                        value: _tipoMovimentacao,
-                        decoration: InputDecoration(
-                          labelText: 'Tipo de Movimentação',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
-                          ),
-                        ),
-                        items: ['Entrada', 'Saída']
-                            .map((tipo) => DropdownMenuItem(
-                                  value: tipo,
-                                  child: Text(tipo),
-                                ))
-                            .toList(),
-                        onChanged: (valor) {
-                          setState(() {
-                            _tipoMovimentacao = valor!;
-                          });
-                        },
+                      const Text(
+                        'Preencha os dados para registrar a saída do produto',
+                        style: TextStyle(color: Colors.grey),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 16),
                       TextField(
                         controller: _quantidadeController,
                         keyboardType: TextInputType.number,
                         decoration: InputDecoration(
-                          labelText: 'Quantidade',
+                          labelText: 'Quantidade para saída',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8.0),
                           ),
@@ -244,7 +219,7 @@ class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
                           fillColor: Colors.blue[50],
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 16),
                       TextField(
                         controller: _dataController,
                         keyboardType: TextInputType.number,
@@ -252,7 +227,7 @@ class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
                           MaskedInputFormatter('##/##/####'),
                         ],
                         decoration: InputDecoration(
-                          labelText: 'Data (DD/MM/YYYY)',
+                          labelText: 'Data da saída (DD/MM/YYYY)',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8.0),
                           ),
@@ -260,50 +235,34 @@ class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
                           fillColor: Colors.blue[50],
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      Center(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            ElevatedButton(
-                              onPressed: _registrarMovimentacao,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blueAccent,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10.0),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 24, vertical: 12),
-                              ),
-                              child: const Text(
-                                'Registrar Movimentação',
-                                style: TextStyle(fontSize: 16),
-                              ),
-                            ),
-                            const SizedBox(width: 20),
+                      const SizedBox(height: 24),
                       Center(
                         child: ElevatedButton(
-                          onPressed:(){
-                            Navigator.popAndPushNamed(context, "/ProdutoDetalhesPage");
-                          },
+                          onPressed: _registrarSaida,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blueAccent,
+                            backgroundColor: Colors.redAccent,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10.0),
                             ),
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 24, vertical: 12),
+                                horizontal: 32, vertical: 14),
                           ),
                           child: const Text(
-                            'Voltar',
-                            style: TextStyle(fontSize: 16),
+                            'Confirmar Saída',
+                            style: TextStyle(fontSize: 16, color: Colors.white),
                           ),
                         ),
                       ),
-                          ],
+                      const SizedBox(height: 12),
+                      Center(
+                        child: TextButton(
+                          onPressed: () => Navigator.popAndPushNamed(context,'/HomePageFuncionario'),
+                          child: const Text(
+                            'Cancelar',
+                            style: TextStyle(color: Colors.blueAccent),
+                          ),
                         ),
                       ),
-                      
                     ],
                   ),
                 ),
@@ -311,6 +270,21 @@ class ProdutoDetalhesPageState extends State<ProdutoDetalhesPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        children: [
+          Text(
+            '$label: ',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          Text(value),
+        ],
       ),
     );
   }

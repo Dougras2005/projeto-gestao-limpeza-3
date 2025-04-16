@@ -30,16 +30,37 @@ class HomePageAdminState extends State<HomePageAdmin> {
     super.dispose();
   }
 
-  // Método para carregar os produtos cadastrados
-  _carregarProdutos() async {
-    final produtos = await _produtoRepository.getProduto();
-    if (mounted) {
-      setState(() {
-        _produtos = produtos;
-        _produtosFiltrados = produtos; // Inicialmente, exibe todos
-      });
-    }
+// Método para carregar os produtos cadastrados
+_carregarProdutos() async {
+  final produtos = await _produtoRepository.getProduto();
+  if (mounted) {
+    setState(() {
+      _produtos = produtos;
+      _produtosFiltrados = produtos; // Inicialmente, exibe todos
+    });
+    
+    // Print formatado para visualização dos produtos
+  //   print('══════════════════ LISTA DE PRODUTOS ══════════════════');
+  //   for (var i = 0; i < produtos.length; i++) {
+  //     final produto = produtos[i];
+  //     print('➤ Produto ${i + 1}:');
+  //     print('   ID: ${produto.idMaterial}');
+  //     print('   Código: ${produto.codigo}');
+  //     print('   Nome: ${produto.nome}');
+  //     print('   Quantidade: ${produto.quantidade}');
+  //     print('   Validade: ${produto.validade ?? "N/A"}');
+  //     print('   Local: ${produto.local}');
+  //     print('   Tipo ID: ${produto.idtipo}');
+  //     print('   Tipo: ${produto.tipoProduto ?? "N/A"}');
+  //     print('   Fornecedor ID: ${produto.idfornecedor}');
+  //     print('   Fornecedor: ${produto.nomeFornecedor ?? "N/A"}');
+  //     print('   Entrada: ${produto.entrada}');
+  //     print('──────────────────────────────────────────────');
+  //   }
+  //   print('Total de produtos: ${produtos.length}');
+  //   print('════════════════════════════════════════════════');
   }
+}
 
   // Método para filtrar produtos pelo nome
   void _filtrarProdutos() {
